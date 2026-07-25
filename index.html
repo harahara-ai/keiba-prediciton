@@ -411,7 +411,7 @@ const SORT_DEFS = [
 function sortKey(h){
   const m={
     conf:    ()=>h.confidence_score??-1,
-    ability: ()=>h.p_ability??-1,
+    ability: ()=>h.p_win??h.p_ability??-1,
     place:   ()=>h.p_place??-1,
     myomi:   ()=>h.myomi_score??-1,
     ev:      ()=>(h.ev_tansho!=null&&!h.ev_tansho_anomaly)?h.ev_tansho:-1,
@@ -522,7 +522,7 @@ function renderTable(r){
       <td>${kyakuHtml(kc)}</td>
       <td class="num-od">${h.tansho_odds!=null?Number(h.tansho_odds).toFixed(1):'—'}<br><span style="font-size:9px;color:var(--t3)">${oddsRank[h.umaban]?oddsRank[h.umaban]+'人気':''}</span></td>
       <td style="white-space:nowrap;text-align:center">${confHtml(h.confidence_rank)}<br><span style="font-size:9px;color:var(--t3);font-family:var(--mono)">${h.confidence_score||0}</span></td>
-      <td class="num-ab">${pct(h.p_ability)}</td>
+      <td class="num-ab">${pct(h.p_win??h.p_ability)}<br><span style="font-size:9px;color:var(--t3)">地${pct(h.ability_score)}×条${pct(h.condition_score)}</span></td>
       <td class="num-pl">${pct(h.p_place)}</td>
       <td style="font-family:var(--mono);font-weight:800;font-size:11px;color:${(h.fit_score||0)>=30?'var(--orange)':(h.fit_score||0)>=15?'var(--t2)':'var(--t4)'}">${h.fit_score??'—'}</td>
       <td class="num-ev ${evGood?'good':''}">${h.ev_tansho!=null&&!h.ev_tansho_anomaly?Number(h.ev_tansho).toFixed(2):'—'}<br>${div}</td>
@@ -543,7 +543,7 @@ function renderPace(r){
   const lcls=['L0','L1','L2','L3'];
 
   const lanesHtml = lanes.map((arr,i)=>{
-    const horses = arr.sort((a,b)=>b.p_ability-a.p_ability)
+    const horses = arr.sort((a,b)=>(b.p_win??b.p_ability)-(a.p_win??a.p_ability))
       .map(h=>{
         const isFront = i<=1;
         return `<div class="lane-horse ${h.is_keshi?'keshi':''} ${isFront?'front-flag':''}">
@@ -586,10 +586,11 @@ function renderRight(r){
             </div>
             <span class="hm-kyaku kyaku-${kc}">${h.kyaku_label||'—'}</span>
             <div class="hm-probs">
-              <span class="pp win">${pct(h.p_ability)}%</span>
+              <span class="pp win">${pct(h.p_win??h.p_ability)}%</span>
               <span class="pp pla">${pct(h.p_place)}%</span>
             </div>
           </div>
+          ${(h.ability_score!=null||h.condition_score!=null)?`<div class="hm-breakdown" style="font-size:9.5px;color:var(--t3);margin-top:2px">地力${pct(h.ability_score)}% × 条件適性${pct(h.condition_score)}%</div>`:''}
           ${h.reason?`<div class="hm-reason">${h.reason}</div>`:''}
           <div class="hm-stats">
             <div class="hm-stat ${evGood?'good':''}">
