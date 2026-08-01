@@ -5,6 +5,16 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏇</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wakaba AI Keiba</title>
+<!-- ─── サイト名の一元管理 ───────────────────────────────
+     公開用サイトを別リポジトリで運用する場合、ここの SITE_NAME だけを
+     書き換えれば title / ロゴ / 保存キーがすべて追従する。
+     （保存キーはサイトごとに分けたいので SITE_KEY も併せて変える）
+──────────────────────────────────────────────────── -->
+<script>
+const SITE_NAME = 'Wakaba AI Keiba';
+const SITE_KEY  = 'wakaba';
+document.title = SITE_NAME;
+</script>
 <style>
 /* ─── DESIGN TOKENS ─────────────────────────────────────────
    競馬の世界: 芝の緑、ダートの茶、勝負の赤
@@ -337,7 +347,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t1);
 <!-- TOPBAR -->
 <div id="topbar">
 
-  <div class="logo"><em>●</em> Wakaba AI Keiba</div>
+  <div class="logo"><em>●</em> <span id="siteName">Wakaba AI Keiba</span></div>
   <div id="dateTabs"></div>
   <div id="headMeta">
     <span id="headDate">—</span>
@@ -459,8 +469,8 @@ function renderHeader(r){
       <div class="rh-top">
         <div class="rh-no">${r.race_no}R</div>
         <div>
-          <div class="rh-title">${r.grade||'—'}</div>
-          <div class="rh-meta">${r.place} ${r.surface}${r.distance}m · ${r.atama}頭 · ${r.baba||'良'} · 発走 ${r.start_time||'—'}</div>
+          <div class="rh-title">${r.grade||'—'}${r.meets_filter?' <span style="font-size:10px;color:#fff;background:#c0392b;border-radius:4px;padding:1px 6px;vertical-align:middle">厳選</span>':''}${r.reference_hit_rate!=null?` <span style="font-size:10px;color:#fff;background:#2c7a4b;border-radius:4px;padding:1px 6px;vertical-align:middle" title="過去4年(2022-2025)の実測値。この地力差・頭数の条件のレースで、AI本命が1着になった割合です。今回のレースの的中を保証するものではありません">自信度 ${r.reference_hit_rate}%</span>`:''}</div>
+          <div class="rh-meta">${r.place} ${r.surface}${r.distance}m · ${r.atama}頭 · ${r.baba||'良'} · 発走 ${r.start_time||'—'}${r.ability_gap!=null?` · 地力差${r.ability_gap}%`:''}${r.reference_hit_label?` · ${r.reference_hit_label}`:''}</div>
         </div>
       </div>
       ${verdictHtml}${buyHtml}
@@ -591,6 +601,7 @@ function renderRight(r){
             </div>
           </div>
           ${(h.ability_score!=null||h.condition_score!=null)?`<div class="hm-breakdown" style="font-size:9.5px;color:var(--t3);margin-top:2px">地力${pct(h.ability_score)}% × 条件適性${pct(h.condition_score)}%</div>`:''}
+          ${h.market_divergence_label?`<div class="hm-breakdown" style="font-size:9.5px;color:var(--t3)">${h.market_divergence_pct!=null?(h.market_divergence_pct>0?'+':'')+h.market_divergence_pct+'pt · ':''}${h.market_divergence_label}</div>`:''}
           ${h.reason?`<div class="hm-reason">${h.reason}</div>`:''}
           <div class="hm-stats">
             <div class="hm-stat ${evGood?'good':''}">
@@ -612,6 +623,7 @@ function renderRight(r){
   } else {
     $('rHonmei').innerHTML='';
   }
+
 
   // 消し馬
   const keshi = r.horses.filter(h=>h.is_keshi);
@@ -652,6 +664,34 @@ function renderRight(r){
         }).join('');
         return `<div class="bg"><div class="bg-label">${t}</div>${rows}</div>`;
       }).join('')}`;
+
+    // 3連単フォーメーション（実績ベース）
+    const forms = r.trifecta_formations||[];
+    if(forms.length){
+      $('rBets').innerHTML += `
+        <div class="sec-h" style="background:#8a5a2b">3連単フォーメーション（実績ベース）</div>
+        ${r.formation_axis_note?`<div style="font-size:10.5px;color:var(--gold);padding:5px 8px;font-weight:700">
+          ${r.formation_axis_note}
+        </div>`:''}
+        <div style="font-size:9.5px;color:var(--t3);padding:4px 8px;line-height:1.5">
+          過去4年の「AI順位 → 実際の着順」の実測値を、頭数帯×地力差帯で集計したものです。
+          地力差が大きいレースほど少ない軸で足りる傾向が出ています。<br>
+          <b style="color:var(--t2)">※ 3連単のオッズは取得していないため、回収率は検証できていません。</b>
+          「目安」は点数効率（的中率÷点数）が最も高い構成というだけで、最も儲かる構成という意味ではありません。
+          点数が多いほど当たりやすいのは当然なので、点数と的中率の両方を見て、
+          実際のオッズと照らして判断してください。
+        </div>
+        ${forms.slice(0,4).map(f=>`<div class="br ${f.is_recommended?'rec':''}" style="display:block;padding:6px 8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <b style="font-size:11px">${f.name}${f.is_recommended?' <span style="font-size:9px;color:#fff;background:#8a5a2b;border-radius:3px;padding:1px 4px">目安</span>':''}</b>
+            <span><span class="br-hit">${f.hit_rate}%</span>
+            <span class="br-od">${f.points}点</span></span>
+          </div>
+          <div style="font-size:10px;color:var(--t3);margin-top:3px;font-family:var(--mono)">
+            ${f.col1.join(',')} → ${f.col2.join(',')} → ${f.col3.join(',')}
+          </div>
+        </div>`).join('')}`;
+    }
   } else if(!r.buy_flag && !r.skip){
     $('rBets').innerHTML = `
       <div class="sec-h orange" style="opacity:.4">買い目</div>
@@ -817,7 +857,7 @@ function setSortKey(k){
 }
 
 // ─── 表示状態の保存/復元（リロードで土曜1Rに戻らないように）───
-const VIEW_STATE_KEY = 'wakaba_keiba_view_state';
+const VIEW_STATE_KEY = SITE_KEY + '_keiba_view_state';
 
 function saveViewState(){
   if(!curRace || !DATA) return;
@@ -1004,6 +1044,10 @@ async function refreshData(){
   renderSidebar();
   if(target) selectRace(target.race_id);
 }
+
+// サイト名をロゴに反映（SITE_NAMEを書き換えるだけで全体に追従する）
+const _siteEl = document.getElementById('siteName');
+if(_siteEl) _siteEl.textContent = SITE_NAME;
 
 load();
 </script>
